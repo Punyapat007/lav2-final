@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Game Timer System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #0b0d0e;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+
+        .table {
+            border: 1px solid #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px;
+            background-color: #121212;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .table-title {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        .controls button, .customer-controls {
+            padding: 10px 10px;
+            font-size: 0.9em;
+            color: #ffffff;
+            background-color: #3a3a3a;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+        }
+
+        .add-button {
+            padding: 10px 15px;
+            font-size: 1em;
+            color: #ffffff;
+            background-color: #333333;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Loaddice Game Timer System</h1>
+    <h3>(ระบบจับเวลา)</h3>
+
+    <div id="tablesContainer"></div>
+
+    <button class="add-button" onclick="addTable()">เพิ่มโต๊ะ</button>
+
+    <script>
+        var tableCount = 0;
+        var tables = {};
+
+        function addTable() {
+            tableCount++;
+            var tableId = "table_" + tableCount;
+            tables[tableId] = { customers: [] };
+
+            var tableDiv = document.createElement("div");
+            tableDiv.className = "table";
+            tableDiv.id = tableId;
+            tableDiv.innerHTML = '' +
+                '<h3 class="table-title">โต๊ะ ' + tableCount + '</h3>' +
+                '<div id="' + tableId + '_customers"></div>' +
+                '<div class="controls">' +
+                '<button onclick="addCustomer(\'' + tableId + '\')">เพิ่มลูกค้า</button>' +
+                '<button onclick="startAll(\'' + tableId + '\')">เริ่มเวลาทุกคน</button>' +
+                '<button onclick="pauseAll(\'' + tableId + '\')">หยุดเวลาทุกคน</button>' +
+                '<button onclick="resetAll(\'' + tableId + '\')">รีเซ็ตเวลาทุกคน</button>' +
+                '</div>';
+            document.getElementById("tablesContainer").appendChild(tableDiv);
+        }
+
+        function addCustomer(tableId) {
+            var customerId = tables[tableId].customers.length + 1;
+            var customerDivId = tableId + "_customer_" + customerId;
+            var customerData = { startTime: null, elapsedTime: 0, isRunning: false, interval: null };
+
+            tables[tableId].customers.push(customerData);
+
+            var customerDiv = document.createElement("div");
+            customerDiv.id = customerDivId;
+            customerDiv.className = "customer";
+            customerDiv.innerHTML = '' +
+                '<p>Q' + customerId + ' <span id="' + customerDivId + '_display">00:00:00</span></p>' +
+                '<button class="customer-controls" onclick="startCustomer(\'' + tableId + '\', ' + (customerId - 1) + ')">เริ่ม</button>' +
+                '<button class="customer-controls" onclick="pauseCustomer(\'' + tableId + '\', ' + (customerId - 1) + ')">หยุด</button>' +
+                '<button class="customer-controls" onclick="resetCustomer(\'' + tableId + '\', ' + (customerId - 1) + ')">รีเซ็ต</button>' +
+                '<button class="customer-controls" onclick="removeCustomer(\'' + tableId + '\', ' + (customerId - 1) + ')">ลบ</button>';
+            document.getElementById(tableId + "_customers").appendChild(customerDiv);
+        }
+
+        function updateDisplay(tableId, customerId) {
+            var customerData = tables[tableId].customers[customerId];
+            var elapsedTime = customerData.isRunning
+                ? new Date().getTime() - customerData.startTime + customerData.elapsedTime
+                : customerData.elapsedTime;
+
+            var hours = Math.floor(elapsedTime / 3600000);
+            var minutes = Math.floor((elapsedTime % 3600000) / 60000);
+            var seconds = Math.floor((elapsedTime % 60000) / 1000);
+
+            document.getElementById(tableId + "_customer_" + (customerId + 1) + "_display").innerHTML =
+                (hours < 10 ? "0" : "") + hours + ":" +
+                (minutes < 10 ? "0" : "") + minutes + ":" +
+                (seconds < 10 ? "0" : "") + seconds;
+        }
+
+        function startCustomer(tableId, customerId) {
+            var customerData = tables[tableId].customers[customerId];
+            if (!customerData.isRunning) {
+                customerData.startTime = new Date().getTime();
+                customerData.isRunning = true;
+                customerData.interval = setInterval(function () {
+                    updateDisplay(tableId, customerId);
+                }, 1000);
+            }
+        }
+
+        function pauseCustomer(tableId, customerId) {
+            var customerData = tables[tableId].customers[customerId];
+            if (customerData.isRunning) {
+                clearInterval(customerData.interval);
+                customerData.elapsedTime += new Date().getTime() - customerData.startTime;
+                customerData.isRunning = false;
+            }
+        }
+
+        function resetCustomer(tableId, customerId) {
+            var customerData = tables[tableId].customers[customerId];
+            clearInterval(customerData.interval);
+            customerData.startTime = null;
+            customerData.elapsedTime = 0;
+            customerData.isRunning = false;
+            document.getElementById(tableId + "_customer_" + (customerId + 1) + "_display").innerHTML = "00:00:00";
+        }
+
+        function removeCustomer(tableId, customerId) {
+            var customerDiv = document.getElementById(tableId + "_customer_" + (customerId + 1));
+            customerDiv.parentNode.removeChild(customerDiv);
+            tables[tableId].customers.splice(customerId, 1);
+        }
+
+        function startAll(tableId) {
+            for (var i = 0; i < tables[tableId].customers.length; i++) {
+                startCustomer(tableId, i);
+            }
+        }
+
+        function pauseAll(tableId) {
+            for (var i = 0; i < tables[tableId].customers.length; i++) {
+                pauseCustomer(tableId, i);
+            }
+        }
+
+        function resetAll(tableId) {
+            for (var i = 0; i < tables[tableId].customers.length; i++) {
+                resetCustomer(tableId, i);
+            }
+        }
+    </script>
+</body>
+</html>
